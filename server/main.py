@@ -120,6 +120,24 @@ class CreatePurchaseOrderRequest(BaseModel):
     expected_delivery_date: str
     notes: Optional[str] = None
 
+class Task(BaseModel):
+    id: int
+    title: str
+    priority: str
+    dueDate: str
+    status: str
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    priority: str
+    dueDate: str
+
+# Tasks live in memory only; restart resets to empty.
+# IDs start at 1000 so they can't collide with the mock task IDs (1-4)
+# that App.vue merges in from useAuth.js.
+tasks: List[dict] = []
+_next_task_id = 1000
+
 # API endpoints
 @app.get("/")
 def root():
@@ -303,6 +321,46 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.get("/api/tasks", response_model=List[Task])
+def get_tasks():
+    """Get all tasks created via the API."""
+    return tasks
+
+@app.post("/api/tasks", response_model=Task, status_code=201)
+def create_task(payload: CreateTaskRequest):
+    """Create a new task. ID is auto-assigned, status defaults to 'pending'."""
+    global _next_task_id
+    task = {
+        "id": _next_task_id,
+        "title": payload.title,
+        "priority": payload.priority,
+        "dueDate": payload.dueDate,
+        "status": "pending",
+    }
+    _next_task_id += 1
+    # Insert at the front so the newest task appears first, matching the
+    # client's unshift() in App.vue.addTask.
+    tasks.insert(0, task)
+    return task
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: int):
+    """Delete a task by ID."""
+    for i, task in enumerate(tasks):
+        if task["id"] == task_id:
+            tasks.pop(i)
+            return {"ok": True}
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.patch("/api/tasks/{task_id}", response_model=Task)
+def toggle_task(task_id: int):
+    """Toggle a task between 'pending' and 'completed'."""
+    for task in tasks:
+        if task["id"] == task_id:
+            task["status"] = "completed" if task["status"] == "pending" else "pending"
+            return task
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
 if __name__ == "__main__":
     import uvicorn
