@@ -99,7 +99,10 @@ class BacklogItem(BaseModel):
     quantity_available: int
     days_delayed: int
     priority: str
+    # has_purchase_order kept for backwards compat; purchase_order_id is the
+    # canonical field the frontend uses to drive Create PO / View PO button state.
     has_purchase_order: Optional[bool] = False
+    purchase_order_id: Optional[str] = None
 
 class PurchaseOrder(BaseModel):
     id: str
@@ -187,13 +190,19 @@ def get_demand_forecasts():
 @app.get("/api/backlog", response_model=List[BacklogItem])
 def get_backlog():
     """Get backlog items with purchase order status"""
-    # Add has_purchase_order flag to each backlog item
+    # Annotate each backlog item with PO info derived from purchase_orders data.
+    # purchase_order_id is the canonical field for button-state; has_purchase_order
+    # is kept for any consumers that already depend on the boolean form.
     result = []
     for item in backlog_items:
         item_dict = dict(item)
-        # Check if this backlog item has a purchase order
-        has_po = any(po["backlog_item_id"] == item["id"] for po in purchase_orders)
-        item_dict["has_purchase_order"] = has_po
+        # Find the first matching PO for this backlog item (if any)
+        matching_po = next(
+            (po for po in purchase_orders if po["backlog_item_id"] == item["id"]),
+            None
+        )
+        item_dict["has_purchase_order"] = matching_po is not None
+        item_dict["purchase_order_id"] = matching_po["id"] if matching_po else None
         result.append(item_dict)
     return result
 
