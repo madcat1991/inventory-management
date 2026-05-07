@@ -98,14 +98,14 @@
 
       <router-link
         to="/reports"
-        :title="collapsed ? 'Reports' : null"
+        :title="collapsed ? t('nav.reports') : null"
       >
         <span class="icon">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 17V8M9 17V4M15 17v-6"/>
           </svg>
         </span>
-        <span class="label" v-show="!collapsed">Reports</span>
+        <span class="label" v-show="!collapsed">{{ t('nav.reports') }}</span>
       </router-link>
     </nav>
 
