@@ -304,12 +304,14 @@ import { useI18n } from '../composables/useI18n'
 import { formatCurrency } from '../utils/currency'
 import ProductDetailModal from '../components/ProductDetailModal.vue'
 import BacklogDetailModal from '../components/BacklogDetailModal.vue'
+import PurchaseOrderModal from '../components/PurchaseOrderModal.vue'
 
 export default {
   name: 'Dashboard',
   components: {
     ProductDetailModal,
     BacklogDetailModal,
+    PurchaseOrderModal,
   },
   setup() {
     const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
@@ -663,7 +665,12 @@ export default {
     }
 
     const handlePOCreated = (poData) => {
-      // Update the backlog item with the new PO ID
+      // Patch the in-memory backlog item so the row's button state flips
+      // from "Create PO" to "View PO" without reloading from the server.
+      // purchase_order_id is the field the template v-if checks; purchase_order
+      // holds the full object so View PO mode can render it immediately.
+      // NOTE: No backend POST endpoint exists yet — this is client-side only;
+      // a page reload will revert to the server state until persistence is added.
       const item = allBacklogItems.value.find(b => b.id === poData.backlog_item_id)
       if (item) {
         item.purchase_order_id = poData.id
